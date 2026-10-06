@@ -482,14 +482,16 @@
     el("daylight-len").textContent = fmtDaylight(sun.daylight);
 
     var svg = el("sun-arc");
-    var W = 320, H = 168;
-    var x1 = 42, x2 = W - 42;          // horizon endpoints
-    var baseY = 146;                    // horizon line
-    var peak = 46;                      // orbit apex height above horizon
+    var W = 320, H = 150;
+    var x1 = 46, x2 = W - 46;          // horizon endpoints
+    var baseY = 128;                    // horizon line
+    var peak = 46;                      // orbit apex height above horizon (apex y = 82)
 
     var html = "";
 
-    // "Night"/"Day" label floats well above the curve apex — never touches it.
+    // "Night"/"Day" label pinned at the very top of the graph area.
+    // Orbit apex sits at y≈82, so there is always a wide clear band (~50px)
+    // between the label baseline and the topmost point of the dotted curve.
     var offsetMs = (d.utc_offset_seconds || 0) * 1000;
     var nowD = new Date(Date.now() + offsetMs);
     var nowMin = nowD.getUTCHours() * 60 + nowD.getUTCMinutes();
@@ -497,7 +499,7 @@
     var isDaytime = riseMin !== null && setMin !== null && setMin > riseMin &&
       nowMin >= riseMin && nowMin <= setMin;
 
-    html += "<text x='" + (W / 2) + "' y='20' text-anchor='middle' class='sa-top-label'>" +
+    html += "<text x='" + (W / 2) + "' y='15' text-anchor='middle' class='sa-top-label'>" +
       (isDaytime ? "Day" : "Night") + "</text>";
 
     // Quadratic orbit: M x1,baseY  Q mid,(baseY - 2*peak)  x2,baseY
@@ -524,19 +526,19 @@
     // Horizon
     html += "<line x1='" + (x1 - 14) + "' y1='" + baseY + "' x2='" + (x2 + 14) + "' y2='" + baseY + "' class='sa-horizon'/>";
 
-    // Horizon endpoint labels (under the horizon line, never near the curve)
-    html += "<text x='" + x1 + "' y='" + (baseY + 15) + "' text-anchor='middle' class='sa-end-label'>Sunrise " + fmtTime12(sun.sunrise) + "</text>";
-    html += "<text x='" + x2 + "' y='" + (baseY + 15) + "' text-anchor='middle' class='sa-end-label'>Sunset " + fmtTime12(sun.sunset) + "</text>";
-
-    // Celestial marker riding the orbit (smooth CSS transition on transform)
+    // Celestial marker riding the orbit (smooth CSS transition on transform).
+    // Sunrise/sunset times live in the HTML row BELOW the svg, so the marker
+    // can never overlap them. t is clamped so the circle stays fully inside
+    // the graph area for any sunrise/sunset/current-time combination.
     var markerT = isDaytime ? t : (riseMin !== null && setMin !== null && setMin > riseMin ? (nowMin < riseMin ? 0 : 1) : 0.5);
+    markerT = Math.min(0.96, Math.max(0.04, markerT));
     var mx = (1 - markerT) * (1 - markerT) * x1 + 2 * (1 - markerT) * markerT * midX + markerT * markerT * x2;
     var my = (1 - markerT) * (1 - markerT) * baseY + 2 * (1 - markerT) * markerT * ctrlY + markerT * markerT * baseY;
     var night = !isDaytime;
 
     html += "<g class='sa-marker' transform='translate(" + mx.toFixed(1) + "," + my.toFixed(1) + ")'>" +
-      "<circle r='13' class='" + (night ? "sa-moon-glow" : "sa-sun-glow") + "'/>" +
-      "<circle r='7' class='" + (night ? "sa-moon-core" : "sa-sun-core") + "'/>" +
+      "<circle r='12' class='" + (night ? "sa-moon-glow" : "sa-sun-glow") + "'/>" +
+      "<circle r='6.5' class='" + (night ? "sa-moon-core" : "sa-sun-core") + "'/>" +
       "</g>";
 
     svg.innerHTML = html;
@@ -666,7 +668,7 @@
   var mapObj = null, mapMarker = null, mapInited = false, mapObserver = null;
   var mapPendingData = null;
   var radarFrames = [], radarLayers = [], radarCurrent = 0;
-  var radarPlayTimer = null, radarPlaying = false, radarMeta = null;
+  var radarMeta = null;
 
   var OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
   var OSM_ATTRIB = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>';
@@ -750,15 +752,8 @@
       else mapObj.scrollWheelZoom.enable();
     });
 
-    // Bind toolbar controls once
-    el("map-play").addEventListener("click", toggleRadarPlay);
-    el("map-refresh").addEventListener("click", function () { loadRadarMeta(true); });
-    el("map-center").addEventListener("click", updateMapView);
+    // Bind error-fallback retry (the only remaining radar control)
     el("map-retry").addEventListener("click", function () { loadRadarMeta(true); });
-    el("map-timeline").addEventListener("input", function () {
-      stopRadarPlay();
-      showRadarFrame(parseInt(el("map-timeline").value, 10) || 0);
-    });
 
     // Staged invalidation handles late layout/font settling.
     var fixSize = function () { if (mapObj) mapObj.invalidateSize(); };
@@ -796,7 +791,6 @@
     if (!mapObj) return;
     radarMeta = null;
     clearRadarLayers();
-    stopRadarPlay();
     mapOverlay(true, isRetry ? "Refreshing weather radar…" : "Loading weather radar…", false, true);
     el("map-updated").textContent = isRetry ? "Refreshing…" : "Loading weather radar…";
 
@@ -813,9 +807,7 @@
         // Past frames + nowcast, chronological
         radarFrames = data.radar.past.concat(data.radar.nowcast || []);
         buildRadarLayers(data.host);
-        el("map-updated").textContent = "Updated " + radarFrameClock(radarFrames[radarFrames.length - 1].time) + " · " + radarFrames.length + " frames";
-        el("map-timeline").max = String(radarFrames.length - 1);
-        el("map-timeline").value = String(radarFrames.length - 1);
+        el("map-updated").textContent = "Updated " + radarFrameClock(radarFrames[radarFrames.length - 1].time);
         mapOverlay(false);
         showRadarFrame(radarFrames.length - 1);
       })
@@ -852,9 +844,6 @@
     radarLayers.forEach(function (l, idx) {
       l.setOpacity(idx === i ? RADAR_OPACITY : 0);
     });
-    var frame = radarFrames[i];
-    el("map-frame-time").textContent = radarFrameClock(frame.time);
-    el("map-timeline").value = String(i);
   }
 
   function radarFrameClock(unixSec) {
@@ -863,25 +852,6 @@
     var ampm = h >= 12 ? "PM" : "AM";
     var h12 = h % 12 || 12;
     return h12 + ":" + (m < 10 ? "0" : "") + m + " " + ampm;
-  }
-
-  function toggleRadarPlay() {
-    if (radarPlaying) { stopRadarPlay(); return; }
-    if (radarLayers.length < 2) return;
-    radarPlaying = true;
-    el("map-play").textContent = "❚❚";
-    var step = function () {
-      showRadarFrame((radarCurrent + 1) % radarLayers.length);
-      radarPlayTimer = setTimeout(step, 700);
-    };
-    step();
-  }
-
-  function stopRadarPlay() {
-    radarPlaying = false;
-    clearTimeout(radarPlayTimer);
-    var btn = el("map-play");
-    if (btn) btn.textContent = "▶";
   }
 
   function escapeHtml(s) {

@@ -670,8 +670,11 @@
   var radarFrames = [], radarLayers = [], radarCurrent = 0;
   var radarMeta = null;
 
-  var OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-  var OSM_ATTRIB = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>';
+  // CARTO basemaps (free for apps, built on OSM data). OSM's own tile server
+  // returns 403 "Access blocked" for browser apps, so we use CARTO instead.
+  var CARTO_LIGHT_URL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+  var CARTO_DARK_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+  var CARTO_ATTRIB = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a> © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
   var RADAR_META_URL = "https://api.rainviewer.com/public/weather-maps.json";
   var RADAR_MAX_ZOOM = 7;   // RainViewer tile limit
   var RADAR_OPACITY = 0.65;
@@ -739,11 +742,14 @@
       maxZoom: RADAR_MAX_ZOOM,
       worldCopyJump: true
     });
-    // Official OSM HTTPS endpoint + visible attribution; normal browser
-    // caching applies (no custom subdomains, no prefetching).
-    window.L.tileLayer(OSM_URL, {
+    // CARTO tiles (OSM data) — OSM's own server 403-blocks browser apps.
+    // Light/dark variant follows the current theme.
+    var isLight = window.App && typeof window.App.isLightTheme === "function"
+      ? window.App.isLightTheme() : false;
+    window.L.tileLayer(isLight ? CARTO_LIGHT_URL : CARTO_DARK_URL, {
       maxZoom: RADAR_MAX_ZOOM,
-      attribution: OSM_ATTRIB
+      subdomains: "abcd",
+      attribution: CARTO_ATTRIB
     }).addTo(mapObj);
 
     var lat = d.place.lat, lon = d.place.lon;

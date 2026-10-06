@@ -53,10 +53,33 @@
 
   function applyTheme() {
     document.documentElement.setAttribute("data-theme", settings.theme);
-    document.body.classList.toggle("dark-active",
-      settings.theme === "dark" || (settings.theme === "system" && themeQuery.matches));
+    var darkActive = settings.theme === "dark" || (settings.theme === "system" && themeQuery.matches);
+    document.body.classList.toggle("dark-active", darkActive);
     var meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", document.body.classList.contains("dark-active") ? "#0a1230" : "#2f7fd6");
+    if (meta) meta.setAttribute("content", darkActive ? "#0a1230" : "#7fb8e6");
+    syncThemeIcon();
+  }
+
+  function isLightTheme() {
+    return settings.theme === "light" || (settings.theme === "system" && !themeQuery.matches);
+  }
+
+  var THEME_ICON_MOON =
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">' +
+    '<path d="M19.5 13.5A8 8 0 0 1 10.5 4.5a8 8 0 1 0 9 9Z"/></svg>';
+  var THEME_ICON_SUN =
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">' +
+    '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/></svg>';
+  var THEME_ICON_SYSTEM =
+    '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">' +
+    '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M12 3.5a8.5 8.5 0 0 1 0 17" fill="currentColor" stroke="none" opacity=".85"/></svg>';
+
+  function syncThemeIcon() {
+    var btn = document.getElementById("theme-btn");
+    if (!btn) return;
+    btn.innerHTML = settings.theme === "light" ? THEME_ICON_MOON :
+      settings.theme === "dark" ? THEME_ICON_SUN : THEME_ICON_SYSTEM;
+    btn.setAttribute("aria-label", "Theme: " + settings.theme + " (click to change)");
   }
 
   themeQuery.addEventListener && themeQuery.addEventListener("change", function () {
@@ -702,6 +725,7 @@
   window.App = {
     settings: settings,
     toast: toast,
+    isLightTheme: isLightTheme,
     showSkeleton: showSkeleton,
     hideSkeleton: hideSkeleton,
     showError: showError,

@@ -165,8 +165,15 @@
     if (state.loading) return Promise.resolve();
     state.loading = true;
 
+    var hasData = !!state.data;
+    var contentEl = document.getElementById("content");
     if (!opts.silent) {
-      window.App && window.App.showSkeleton();
+      if (hasData) {
+        // City switch: keep the previous view visible, just dim it slightly.
+        contentEl && contentEl.classList.add("updating");
+      } else {
+        window.App && window.App.showSkeleton();
+      }
     }
 
     // One automatic retry protects against transient network blips.
@@ -193,6 +200,7 @@
       })
       .then(function () {
         state.loading = false;
+        contentEl && contentEl.classList.remove("updating");
         window.App && window.App.hideSkeleton();
       });
   }
@@ -210,6 +218,8 @@
      Rendering
      --------------------------------------------------------- */
 
+  function el(id) { return document.getElementById(id); }
+
   function render() {
     var d = state.data;
     if (!d) return;
@@ -222,9 +232,23 @@
     renderAqi(d);
     renderDetails(d);
     initMap(d);
+    animateSwap();
   }
 
-  function el(id) { return document.getElementById(id); }
+  function animateSwap() {
+    var hero = document.querySelector(".hero-content");
+    var icon = document.getElementById("hero-icon");
+    if (hero && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      hero.classList.remove("swap-in");
+      void hero.offsetWidth;
+      hero.classList.add("swap-in");
+    }
+    if (icon && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      icon.classList.remove("swap-in");
+      void icon.offsetWidth;
+      icon.classList.add("swap-in");
+    }
+  }
 
   function renderHero(d) {
     var cur = d.current;
@@ -235,9 +259,13 @@
 
     var offsetMs = (d.utc_offset_seconds || 0) * 1000;
     var local = new Date(Date.now() + offsetMs);
-    el("local-date").textContent = local.toLocaleDateString(undefined, {
+    var dateLine = local.toLocaleDateString(undefined, {
       weekday: "long", month: "long", day: "numeric", timeZone: "UTC"
     });
+    var timeLine = local.toLocaleTimeString(undefined, {
+      hour: "numeric", minute: "2-digit", timeZone: "UTC"
+    });
+    el("local-date").textContent = dateLine + " · " + timeLine + " local";
 
     el("temp-now").textContent = fmtTempRaw(cur.temp);
     el("temp-unit").textContent = "°";
@@ -254,7 +282,7 @@
     chips.push(chip("uv", "UV", uvNow !== null && uvNow !== undefined ? Math.round(uvNow * 10) / 10 : "—"));
     el("hero-chips").innerHTML = chips.join("");
 
-    window.BG.setSceneFromPayload(d);
+    window.BG.setSceneFromPayload(d, window.App && window.App.isLightTheme ? window.App.isLightTheme() : false);
   }
 
   function chip(iconName, label, value) {
@@ -454,42 +482,62 @@
     el("daylight-len").textContent = fmtDaylight(sun.daylight);
 
     var svg = el("sun-arc");
-    var W = 320, H = 150;
-    var x1 = 34, x2 = W - 34, baseY = 118, arcH = 78;
-    var midX = (x1 + x2) / 2;
+    var W = 320, H = 168;
+    var x1 = 42, x2 = W - 42;          // horizon endpoints
+    var baseY = 146;                    // horizon line
+    var peak = 46;                      // orbit apex height above horizon
 
-    var html = "<defs><linearGradient id='sun-arc-grad' x1='0' y1='0' x2='1' y2='0'>" +
-      "<stop offset='0%' stop-color='#f5a86e'/><stop offset='50%' stop-color='#ffd36e'/><stop offset='100%' stop-color='#e8825e'/>" +
-      "</linearGradient></defs>";
-    html += "<line x1='" + x1 + "' y1='" + baseY + "' x2='" + x2 + "' y2='" + baseY + "' class='sa-horizon'/>";
-    html += "<path d='M" + x1 + " " + baseY + " Q " + midX + " " + (baseY - arcH * 2) + " " + x2 + " " + baseY +
-      "' fill='none' stroke='url(#sun-arc-grad)' stroke-width='2.5' stroke-dasharray='1 6' stroke-linecap='round' class='sa-arc'/>";
+    var html = "";
 
-    // Progress of the sun across the sky, in the location's local time
+    // "Night"/"Day" label floats well above the curve apex — never touches it.
     var offsetMs = (d.utc_offset_seconds || 0) * 1000;
-    var nowMin = new Date(Date.now() + offsetMs).getUTCHours() * 60 + new Date(Date.now() + offsetMs).getUTCMinutes();
+    var nowD = new Date(Date.now() + offsetMs);
+    var nowMin = nowD.getUTCHours() * 60 + nowD.getUTCMinutes();
     var riseMin = timeToMinutes(sun.sunrise), setMin = timeToMinutes(sun.sunset);
+    var isDaytime = riseMin !== null && setMin !== null && setMin > riseMin &&
+      nowMin >= riseMin && nowMin <= setMin;
 
+    html += "<text x='" + (W / 2) + "' y='20' text-anchor='middle' class='sa-top-label'>" +
+      (isDaytime ? "Day" : "Night") + "</text>";
+
+    // Quadratic orbit: M x1,baseY  Q mid,(baseY - 2*peak)  x2,baseY
+    var midX = (x1 + x2) / 2, ctrlY = baseY - 2 * peak;
+    var orbit = "M" + x1 + " " + baseY + " Q " + midX + " " + ctrlY + " " + x2 + " " + baseY;
+
+    // Traveled portion of the orbit (accent color)
+    var t = 0;
     if (riseMin !== null && setMin !== null && setMin > riseMin) {
-      var f = (nowMin - riseMin) / (setMin - riseMin);
-      var isDaytime = f >= 0 && f <= 1;
-      var t = Math.min(1, Math.max(0, f));
-      // Quadratic bezier point for the arc
-      var cx = midX, cy = baseY - arcH * 2;
-      var bx = (1 - t) * (1 - t) * x1 + 2 * (1 - t) * t * cx + t * t * x2;
-      var by = (1 - t) * (1 - t) * baseY + 2 * (1 - t) * t * cy + t * t * baseY;
-
-      if (isDaytime) {
-        html += "<path d='M" + x1 + " " + baseY + " Q " + midX + " " + (baseY - arcH * 2) + " " + bx.toFixed(1) + " " + by.toFixed(1) +
-          "' fill='none' stroke='url(#sun-arc-grad)' stroke-width='3.5' stroke-linecap='round'/>";
-        html += "<circle cx='" + bx.toFixed(1) + "' cy='" + by.toFixed(1) + "' r='9' fill='#FFD36E'/>" +
-          "<circle cx='" + bx.toFixed(1) + "' cy='" + by.toFixed(1) + "' r='14' fill='#FFD36E' opacity='0.28'/>";
-      } else {
-        var nightX = f < 0 ? x1 : x2;
-        html += "<circle cx='" + nightX + "' cy='" + baseY + "' r='7' fill='#C9D6EC'/>" +
-          "<text x='" + midX + "' y='" + (baseY - arcH * 0.9) + "' text-anchor='middle' class='sa-night-label'>Night</text>";
-      }
+      t = Math.min(1, Math.max(0, (nowMin - riseMin) / (setMin - riseMin)));
     }
+    if (isDaytime && t > 0.005 && t < 0.995) {
+      // De Casteljau split of the quadratic at t gives the traveled sub-curve
+      var ax = x1 + (midX - x1) * t, ay = baseY + (ctrlY - baseY) * t;
+      var bx2 = midX + (x2 - midX) * t, by2 = ctrlY + (baseY - ctrlY) * t;
+      var px2 = ax + (bx2 - ax) * t, py2 = ay + (by2 - ay) * t;
+      html += "<path d='M" + x1 + " " + baseY + " Q " + ax.toFixed(1) + " " + ay.toFixed(1) + " " + px2.toFixed(1) + " " + py2.toFixed(1) +
+        "' class='sa-traveled'/>";
+    }
+
+    // Dotted orbit on top
+    html += "<path d='" + orbit + "' class='sa-orbit'/>";
+
+    // Horizon
+    html += "<line x1='" + (x1 - 14) + "' y1='" + baseY + "' x2='" + (x2 + 14) + "' y2='" + baseY + "' class='sa-horizon'/>";
+
+    // Horizon endpoint labels (under the horizon line, never near the curve)
+    html += "<text x='" + x1 + "' y='" + (baseY + 15) + "' text-anchor='middle' class='sa-end-label'>Sunrise " + fmtTime12(sun.sunrise) + "</text>";
+    html += "<text x='" + x2 + "' y='" + (baseY + 15) + "' text-anchor='middle' class='sa-end-label'>Sunset " + fmtTime12(sun.sunset) + "</text>";
+
+    // Celestial marker riding the orbit (smooth CSS transition on transform)
+    var markerT = isDaytime ? t : (riseMin !== null && setMin !== null && setMin > riseMin ? (nowMin < riseMin ? 0 : 1) : 0.5);
+    var mx = (1 - markerT) * (1 - markerT) * x1 + 2 * (1 - markerT) * markerT * midX + markerT * markerT * x2;
+    var my = (1 - markerT) * (1 - markerT) * baseY + 2 * (1 - markerT) * markerT * ctrlY + markerT * markerT * baseY;
+    var night = !isDaytime;
+
+    html += "<g class='sa-marker' transform='translate(" + mx.toFixed(1) + "," + my.toFixed(1) + ")'>" +
+      "<circle r='13' class='" + (night ? "sa-moon-glow" : "sa-sun-glow") + "'/>" +
+      "<circle r='7' class='" + (night ? "sa-moon-core" : "sa-sun-core") + "'/>" +
+      "</g>";
 
     svg.innerHTML = html;
 
@@ -613,30 +661,54 @@
     }).join("");
   }
 
-  /* ---------------- Weather map (RainViewer radar + Leaflet) ---------------- */
+  /* ---------------- Weather map (OSM base + RainViewer radar) ---------------- */
 
-  var mapObj = null, mapMarker = null, radarLayer = null, mapInited = false;
-  var mapPendingData = null, mapObserver = null;
+  var mapObj = null, mapMarker = null, mapInited = false, mapObserver = null;
+  var mapPendingData = null;
+  var radarFrames = [], radarLayers = [], radarCurrent = 0;
+  var radarPlayTimer = null, radarPlaying = false, radarMeta = null;
+
+  var OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+  var OSM_ATTRIB = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>';
+  var RADAR_META_URL = "https://api.rainviewer.com/public/weather-maps.json";
+  var RADAR_MAX_ZOOM = 7;   // RainViewer tile limit
+  var RADAR_OPACITY = 0.65;
+
+  function mapOverlay(show, msg, showRetry, spinner) {
+    var ov = el("map-overlay");
+    if (!ov) return;
+    ov.hidden = !show;
+    el("map-overlay-msg").textContent = msg || "";
+    el("map-retry").hidden = !showRetry;
+    var sp = ov.querySelector(".sk-spinner");
+    if (sp) sp.style.display = spinner === false ? "none" : "";
+  }
 
   function initMap(d) {
-    var elx = document.getElementById("map");
+    var elx = el("map");
     if (!elx) return;
     mapPendingData = d;
 
-    // Lazy-init: Leaflet needs the container to be laid out and visible.
     if (typeof window.L === "undefined") {
       setTimeout(function () { initMap(mapPendingData); }, 400);
       return;
     }
     if (!mapInited) {
       if (mapObserver) return;
+      // If the container is already on screen, skip the observer entirely —
+      // it can miss elements that are visible at observe() time.
+      var rect = elx.getBoundingClientRect();
+      if (rect.top < window.innerHeight + 200 && rect.bottom > -200 && rect.width > 0) {
+        setupMap();
+        return;
+      }
       mapObserver = new IntersectionObserver(function (entries) {
         if (entries.some(function (e) { return e.isIntersecting; })) {
           mapObserver.disconnect();
           mapObserver = null;
           setupMap();
         }
-      }, { rootMargin: "150px" });
+      }, { rootMargin: "200px" });
       mapObserver.observe(elx);
       return;
     }
@@ -645,16 +717,68 @@
 
   function setupMap() {
     var d = mapPendingData;
-    var elx = document.getElementById("map");
+    var elx = el("map");
     if (!d || !elx || mapInited) return;
     mapInited = true;
-    mapObj = window.L.map(elx, { zoomControl: true, attributionControl: false, scrollWheelZoom: false });
-    window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18 }).addTo(mapObj);
+
+    var d0 = mapPendingData;
+    var lat0 = d0 && d0.place.lat !== undefined ? d0.place.lat : 20;
+    var lon0 = d0 && d0.place.lon !== undefined ? d0.place.lon : 0;
+    // Create the map already centered — never setView before the first
+    // invalidateSize (a pan/zoom animation that gets invalidated mid-flight
+    // freezes the pane transform and breaks tile placement).
+    mapObj = window.L.map(elx, {
+      center: [lat0, lon0],
+      zoom: 5,
+      zoomControl: true,
+      attributionControl: true,
+      scrollWheelZoom: false,
+      minZoom: 2,
+      maxZoom: RADAR_MAX_ZOOM,
+      worldCopyJump: true
+    });
+    // Official OSM HTTPS endpoint + visible attribution; normal browser
+    // caching applies (no custom subdomains, no prefetching).
+    window.L.tileLayer(OSM_URL, {
+      maxZoom: RADAR_MAX_ZOOM,
+      attribution: OSM_ATTRIB
+    }).addTo(mapObj);
+
     var lat = d.place.lat, lon = d.place.lon;
-    mapObj.setView([lat !== undefined ? lat : 20, lon !== undefined ? lon : 0], 8);
-    setTimeout(function () { mapObj.invalidateSize(); }, 150);
-    loadRadarLayer();
-    updateMapView();
+    mapObj.on("click", function () {
+      if (mapObj.scrollWheelZoom.enabled()) mapObj.scrollWheelZoom.disable();
+      else mapObj.scrollWheelZoom.enable();
+    });
+
+    // Bind toolbar controls once
+    el("map-play").addEventListener("click", toggleRadarPlay);
+    el("map-refresh").addEventListener("click", function () { loadRadarMeta(true); });
+    el("map-center").addEventListener("click", updateMapView);
+    el("map-retry").addEventListener("click", function () { loadRadarMeta(true); });
+    el("map-timeline").addEventListener("input", function () {
+      stopRadarPlay();
+      showRadarFrame(parseInt(el("map-timeline").value, 10) || 0);
+    });
+
+    // Staged invalidation handles late layout/font settling.
+    var fixSize = function () { if (mapObj) mapObj.invalidateSize(); };
+    [50, 250, 700].forEach(function (ms) { setTimeout(fixSize, ms); });
+    mapObj.whenReady(fixSize);
+    window.addEventListener("resize", fixSize);
+
+    setTimeout(function () { addMapMarker(); }, 80);
+    loadRadarMeta(false);
+  }
+
+  function addMapMarker() {
+    var d = mapPendingData;
+    if (!d || !mapObj) return;
+    var lat = d.place.lat, lon = d.place.lon;
+    if (lat === undefined || lat === null) return;
+    if (mapMarker) mapMarker.remove();
+    mapMarker = window.L.circleMarker([lat, lon], {
+      radius: 9, color: "#ffffff", weight: 2.5, fillColor: "#2f7fd6", fillOpacity: 0.9
+    }).addTo(mapObj);
   }
 
   function updateMapView() {
@@ -662,32 +786,102 @@
     if (!d || !mapObj) return;
     var lat = d.place.lat, lon = d.place.lon;
     if (lat === undefined || lat === null) return;
-    mapObj.setView([lat, lon], 8);
-    setTimeout(function () { mapObj.invalidateSize(); }, 80);
-    if (mapMarker) mapMarker.remove();
-    mapMarker = window.L.circleMarker([lat, lon], {
-      radius: 9, color: "#ffffff", weight: 2.5, fillColor: "#2f7fd6", fillOpacity: 0.9
-    }).addTo(mapObj);
+    mapObj.setView([lat, lon], 5, { animate: false });
+    setTimeout(function () { mapObj.invalidateSize(); }, 100);
+    addMapMarker();
   }
 
-  function loadRadarLayer() {
-    fetch("https://api.rainviewer.com/public/weather-maps.json")
-      .then(function (r) { if (!r.ok) throw new Error("radar"); return r.json(); })
-      .then(function (data) {
-        var frames = data && data.radar && data.radar.past ? data.radar.past.concat(data.radar.nowcast || []) : [];
-        if (!frames.length) throw new Error("radar");
-        var latest = frames[frames.length - 2 >= 0 ? frames.length - 2 : 0]; // most complete past frame
-        var host = data.host || "https://tilecache.rainviewer.com";
-        var url = host + latest.path + "/256/{z}/{x}/{y}/2/1_1.png";
-        radarLayer = window.L.tileLayer(url, { opacity: 0.65, maxZoom: 10 }).addTo(mapObj);
-        document.getElementById("map-placeholder").style.display = "none";
+  /* Fetch current RainViewer metadata, then build radar tile URLs dynamically. */
+  function loadRadarMeta(isRetry) {
+    if (!mapObj) return;
+    radarMeta = null;
+    clearRadarLayers();
+    stopRadarPlay();
+    mapOverlay(true, isRetry ? "Refreshing weather radar…" : "Loading weather radar…", false, true);
+    el("map-updated").textContent = isRetry ? "Refreshing…" : "Loading weather radar…";
+
+    fetch(RADAR_META_URL)
+      .then(function (r) {
+        if (!r.ok) throw new Error("RainViewer metadata HTTP " + r.status);
+        return r.json();
       })
-      .catch(function () {
-        radarFailed = true;
-        var ph = document.getElementById("map-placeholder");
-        ph.innerHTML = "<p>Radar layer is unavailable right now — showing the base map.</p>";
-        ph.style.background = "transparent";
+      .then(function (data) {
+        if (!data || !data.host || !data.radar || !Array.isArray(data.radar.past) || !data.radar.past.length) {
+          throw new Error("RainViewer response missing radar frames");
+        }
+        radarMeta = data;
+        // Past frames + nowcast, chronological
+        radarFrames = data.radar.past.concat(data.radar.nowcast || []);
+        buildRadarLayers(data.host);
+        el("map-updated").textContent = "Updated " + radarFrameClock(radarFrames[radarFrames.length - 1].time) + " · " + radarFrames.length + " frames";
+        el("map-timeline").max = String(radarFrames.length - 1);
+        el("map-timeline").value = String(radarFrames.length - 1);
+        mapOverlay(false);
+        showRadarFrame(radarFrames.length - 1);
+      })
+      .catch(function (err) {
+        console.warn("[AtmosWeather] radar load failed:", err);
+        radarFrames = [];
+        mapOverlay(true, "Weather radar temporarily unavailable.", true, false);
+        el("map-updated").textContent = "Radar unavailable";
       });
+  }
+
+  function buildRadarLayers(host) {
+    clearRadarLayers();
+    radarFrames.forEach(function (frame, i) {
+      var url = host + frame.path + "/256/{z}/{x}/{y}/2/1_1.png";
+      var layer = window.L.tileLayer(url, {
+        opacity: i === radarFrames.length - 1 ? RADAR_OPACITY : 0,
+        maxZoom: RADAR_MAX_ZOOM,
+        tileSize: 256
+      });
+      layer.addTo(mapObj);
+      radarLayers.push(layer);
+    });
+  }
+
+  function clearRadarLayers() {
+    radarLayers.forEach(function (l) { try { mapObj.removeLayer(l); } catch (e) { /* already gone */ } });
+    radarLayers = [];
+  }
+
+  function showRadarFrame(i) {
+    if (!radarLayers.length || i < 0 || i >= radarLayers.length) return;
+    radarCurrent = i;
+    radarLayers.forEach(function (l, idx) {
+      l.setOpacity(idx === i ? RADAR_OPACITY : 0);
+    });
+    var frame = radarFrames[i];
+    el("map-frame-time").textContent = radarFrameClock(frame.time);
+    el("map-timeline").value = String(i);
+  }
+
+  function radarFrameClock(unixSec) {
+    var d = new Date(unixSec * 1000);
+    var h = d.getHours(), m = d.getMinutes();
+    var ampm = h >= 12 ? "PM" : "AM";
+    var h12 = h % 12 || 12;
+    return h12 + ":" + (m < 10 ? "0" : "") + m + " " + ampm;
+  }
+
+  function toggleRadarPlay() {
+    if (radarPlaying) { stopRadarPlay(); return; }
+    if (radarLayers.length < 2) return;
+    radarPlaying = true;
+    el("map-play").textContent = "❚❚";
+    var step = function () {
+      showRadarFrame((radarCurrent + 1) % radarLayers.length);
+      radarPlayTimer = setTimeout(step, 700);
+    };
+    step();
+  }
+
+  function stopRadarPlay() {
+    radarPlaying = false;
+    clearTimeout(radarPlayTimer);
+    var btn = el("map-play");
+    if (btn) btn.textContent = "▶";
   }
 
   function escapeHtml(s) {

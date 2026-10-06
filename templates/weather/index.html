@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="{% static 'icons/icon-192.svg' %}">
   <link rel="manifest" href="{% static 'manifest.json' %}">
   <link rel="stylesheet" href="{% static 'css/style.css' %}">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.min.css">
+  <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">
 </head>
 <body>
   <!-- Dynamic weather background engine -->
@@ -109,20 +109,23 @@
     <!-- Weather content -->
     <div class="content" id="content" hidden>
       <section class="hero" aria-live="polite">
-        <h1 class="place" id="place-name">—</h1>
-        <div class="place-sub" id="place-sub"></div>
-        <div class="local-date" id="local-date"></div>
-        <div class="hero-main">
-          <div class="hero-icon" id="hero-icon" aria-hidden="true"></div>
-          <div class="hero-temp-wrap">
+        <div class="hero-content">
+          <div class="live-badge"><span class="live-dot" aria-hidden="true"></span>Live conditions</div>
+          <h1 class="place" id="place-name">—</h1>
+          <div class="place-sub" id="place-sub"></div>
+          <div class="local-date" id="local-date"></div>
+          <div class="hero-temp-wrap" id="temp-wrap">
             <div class="hero-temp"><span id="temp-now">—</span><span class="hero-deg" id="temp-unit">°</span></div>
-            <div class="hero-condition" id="condition">—</div>
-            <div class="hero-feels" id="feels">Feels like —</div>
           </div>
+          <div class="hero-condition" id="condition">—</div>
+          <div class="hero-feels" id="feels">Feels like —</div>
+          <p class="summary" id="summary"></p>
+          <div class="hero-chips" id="hero-chips"></div>
+          <div class="updated-line" id="updated-line" aria-live="polite"></div>
         </div>
-        <p class="summary" id="summary"></p>
-        <div class="hero-chips" id="hero-chips"></div>
-        <div class="updated-line" id="updated-line" aria-live="polite"></div>
+        <div class="hero-illustration" id="hero-illustration" aria-hidden="true">
+          <div class="hero-icon" id="hero-icon"></div>
+        </div>
       </section>
 
       <section class="section alerts-section" id="alerts-section">
@@ -151,7 +154,7 @@
         <section class="section" aria-labelledby="h-sun">
           <h2 id="h-sun">Sun &amp; Moon</h2>
           <div class="glass card sun-card">
-            <svg class="sun-arc" id="sun-arc" viewBox="0 0 320 150" role="img" aria-label="Position of the sun between sunrise and sunset"></svg>
+            <svg class="sun-arc" id="sun-arc" viewBox="0 0 320 168" role="img" aria-label="Position of the sun between sunrise and sunset"></svg>
             <div class="sun-times">
               <div class="sun-time"><span class="st-label">Sunrise</span><span class="st-value" id="sunrise-time">—</span></div>
               <div class="sun-daylight" id="daylight-len">—</div>
@@ -172,14 +175,28 @@
       </section>
 
       <section class="section" aria-labelledby="h-map">
-        <h2 id="h-map">Weather Map <span class="tag-live">live radar</span></h2>
+        <h2 id="h-map">Weather Map</h2>
         <div class="glass card map-card">
-          <div class="map" id="map" role="application" aria-label="Precipitation radar map">
-            <div class="map-placeholder" id="map-placeholder">
-              <p>Live precipitation radar will load here for the selected location.</p>
+          <div class="map-statusbar">
+            <span class="map-live"><span class="live-dot" aria-hidden="true"></span> LIVE RADAR</span>
+            <span class="map-updated" id="map-updated">Loading weather radar…</span>
+          </div>
+          <div class="map-wrap">
+            <div class="map" id="map" role="application" aria-label="Precipitation radar map"></div>
+            <div class="map-overlay" id="map-overlay" hidden>
+              <div class="map-overlay-msg" id="map-overlay-msg">Loading weather radar…</div>
+              <div class="sk-spinner" aria-hidden="true"></div>
+              <button class="btn-ghost sm" id="map-retry" type="button" hidden>Retry</button>
             </div>
           </div>
-          <div class="map-note">Precipitation radar via RainViewer · Map data © OpenStreetMap contributors</div>
+          <div class="map-toolbar">
+            <button class="map-btn" id="map-play" type="button" aria-label="Play radar animation">▶</button>
+            <input class="map-timeline" id="map-timeline" type="range" min="0" max="0" value="0" step="1" aria-label="Radar timeline">
+            <span class="map-frame-time" id="map-frame-time">--:--</span>
+            <button class="map-btn" id="map-refresh" type="button" aria-label="Refresh radar">↻</button>
+            <button class="map-btn" id="map-center" type="button" aria-label="Center map on current city">◎</button>
+          </div>
+          <div class="map-note">Weather data by <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a> · Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</div>
         </div>
       </section>
     </div>
@@ -272,7 +289,7 @@
 
   <div class="toast glass" id="toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="{% static 'vendor/leaflet/leaflet.js' %}" defer></script>
   <script src="{% static 'js/animations.js' %}" defer></script>
   <script src="{% static 'js/weather.js' %}" defer></script>
   <script src="{% static 'js/app.js' %}" defer></script>

@@ -1,130 +1,557 @@
-# AtmosWeather
+# 🌤️ AtmosWeather
 
-A premium, Vivo-Weather-inspired weather application built with **Python + Django** and a polished
-**glassmorphism UI**. Fully original design: animated dynamic weather backgrounds, frosted glass
-cards, hourly/5-day forecasts, live precipitation radar, air quality, favorites, units, light/dark
-themes, and PWA support.
+---
 
-## Features
+## 🌦️ About The Project
 
-- **Live weather worldwide** via [Open-Meteo](https://open-meteo.com) — no API key required
-- **Dynamic animated backgrounds** that react to real conditions: clear day/night, clouds, rain,
-  heavy rain, thunderstorms with lightning, snow, fog, plus sunrise/sunset gradients
-- **Animated SVG weather icons** (consistent original icon system, no random emojis)
-- Current conditions: temperature, feels-like, humidity, wind + compass + gusts, pressure,
-  visibility, UV index, dew point, cloud cover, precipitation, moon phase
-- **24-hour hourly forecast** with a smooth interactive temperature-trend graph
-- **5-day forecast** — tap any day for a detailed breakdown modal
-- **Sun & Moon card**: animated sun path showing the sun's real-time position, daylight duration,
-  moon phase and illumination
-- **Air quality** (US AQI, PM2.5, PM10, O₃, NO₂, SO₂, CO) — hidden automatically when unavailable
-- **Live precipitation radar map** — RainViewer radar overlay on a MapTiler basemap (optional key,
-  git-ignored), with automatic fallback to Esri's keyless ArcGIS tiles
-- **Global city search** with debounced autocomplete showing state/country to disambiguate
-- **Use My Location** via browser geolocation + reverse geocoding
-- **Favorites** (add / remove / reorder) and **recent searches**, persisted in localStorage
-- **Units**: °C/°F, km/h / mph / m/s, hPa / inHg, km / miles — instant switching
-- **Light / Dark / System theme** — weather backgrounds stay active regardless of theme
-- Auto-refresh every 10 minutes + manual refresh with "Updated X ago"
-- Skeleton loaders, friendly error states, empty states, toasts
-- **PWA**: installable, service worker with offline shell
-- Responsive: desktop sidebar + full dashboard, mobile bottom navigation, proper mobile layouts
-- Accessibility: semantic HTML, ARIA labels, keyboard navigation (`/` focuses search, `Esc` closes
-  overlays), focus states, `prefers-reduced-motion` support
+**AtmosWeather** is a premium weather application inspired by modern mobile
+weather experiences such as Vivo Weather, redesigned with an original
+glassmorphism interface.
 
-## Technologies
+The application provides real-time weather information for cities around the
+world with dynamic weather backgrounds, animated weather icons, forecasts,
+air-quality information, sunrise/sunset visualization and precipitation radar.
 
-| Layer     | Tech                                                        |
-|-----------|-------------------------------------------------------------|
-| Backend   | Python 3, Django 6, Django cache framework, WhiteNoise      |
-| APIs      | Open-Meteo (forecast/geocoding/air quality), BigDataCloud (reverse geocoding), RainViewer (radar) |
-| Frontend  | HTML5, CSS3 (glassmorphism), vanilla JS, SVG animations, Leaflet |
-| Map tiles | MapTiler (dark/light dataviz, optional key) · Esri ArcGIS fallback · RainViewer radar |
-| Data      | SQLite (dev) — PostgreSQL-ready via `DJANGO_DB_*` env vars  |
+The interface is designed to provide a clean, immersive and responsive weather
+experience across desktop, tablet and mobile devices.
 
-## API Setup
+---
 
-The core providers need no keys: Open-Meteo (weather, geocoding, air quality), BigDataCloud's free
-reverse-geocoding endpoint, and RainViewer (radar overlay).
+## ✨ Features
 
-**Optional: MapTiler basemap key.** The weather map's base layer uses MapTiler's dataviz styles
-(dark and light) when a key is provided, and falls back to Esri's keyless ArcGIS tiles otherwise.
-(OSM's own tile server 403-blocks browser apps, so it is not used directly.)
+### 🌡️ Weather Information
 
-1. Get a free key at [cloud.maptiler.com](https://cloud.maptiler.com) (100k tile loads/month free).
-2. Create `static/js/secrets.js` (git-ignored, never committed):
+- 🌍 Worldwide city weather search
+- 🌡️ Current temperature
+- 🤗 Feels-like temperature
+- 💧 Humidity
+- 💨 Wind speed, direction and gusts
+- 🧭 Wind compass
+- 📊 Atmospheric pressure
+- 👁️ Visibility
+- ☀️ UV index
+- 💦 Dew point
+- ☁️ Cloud cover
+- 🌧️ Precipitation
+- 🌙 Moon phase
 
-   ```js
-   window.MAPTILER_KEY = "your-key-here";
-   ```
+### 📅 Forecasts
 
-3. For production, restrict the key to your domain in the MapTiler console — client-side tile keys
-   are visible to anyone viewing the page source.
+- ⏱️ 24-hour hourly forecast
+- 📈 Interactive temperature trend
+- 📆 5-day weather forecast
+- 🔎 Detailed daily forecast modal
+- 🔄 Automatic weather refresh
 
-If you switch to a keyed weather provider instead, put the key in `.env` as `WEATHER_API_KEY=…`
-and never hardcode it in source.
+### 🌅 Sun & Moon
 
-## Environment Variables
+- ☀️ Sunrise time
+- 🌇 Sunset time
+- 🌞 Daylight duration
+- 🌙 Current moon phase
+- 🌕 Moon illumination
+- 📍 Dynamic solar-position visualization
 
-Copy `.env.example` to `.env` and adjust:
+### 🌫️ Air Quality
 
-| Variable                 | Default | Purpose                                  |
-|--------------------------|---------|------------------------------------------|
-| `DJANGO_SECRET_KEY`      | dev fallback | Set a strong random value in production |
-| `DJANGO_DEBUG`           | `True`  | Must be `False` in production            |
-| `DJANGO_ALLOWED_HOSTS`   | `*`     | Comma-separated host list                |
-| `WEATHER_API_KEY`        | *(empty)* | Reserved for keyed weather providers   |
-| `DJANGO_DB_ENGINE`       | *(empty)* | Set to `postgres` for PostgreSQL       |
-| `DJANGO_DB_*`            | —       | `NAME`, `USER`, `PASSWORD`, `HOST`, `PORT` |
-| `WEATHER_CACHE_TTL`      | `600`   | Weather cache lifetime (seconds)         |
+Displays:
 
-Note: the MapTiler tile key is *not* an environment variable — it is injected client-side via the
-git-ignored `static/js/secrets.js` (see API Setup above).
+- US AQI
+- PM2.5
+- PM10
+- O₃
+- NO₂
+- SO₂
+- CO
 
-## Local Development
+Air-quality information is automatically hidden or degraded gracefully when
+the provider does not return the required data.
 
-```bash
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver 0.0.0.0:8000
+### 🗺️ Live Weather Radar
+
+- 📡 Live precipitation radar
+- 🗺️ Interactive map
+- 📍 Current city marker
+- 🔍 Zoom and pan
+- 🌧️ RainViewer radar overlay
+- 🌍 Dynamic map centering based on selected city
+
+### 🔎 Global Search
+
+- Search cities worldwide
+- Debounced autocomplete
+- State and country information
+- Location disambiguation
+- Recent searches
+
+### ⭐ Favorites
+
+- Add cities to favorites
+- Remove favorites
+- Reorder favorite locations
+- Persist favorite locations locally
+
+### 🎨 Themes
+
+- 🌙 Dark mode
+- ☀️ Light mode
+- 🖥️ System theme
+- Dynamic weather backgrounds remain active across themes
+
+### 📐 Units
+
+Supports instant switching between:
+
+- °C / °F
+- km/h / mph / m/s
+- hPa / inHg
+- km / miles
+
+### 📱 Progressive Web App
+
+- Installable PWA
+- Service worker
+- Offline application shell
+- Responsive mobile navigation
+
+### ♿ Accessibility
+
+- Semantic HTML
+- ARIA labels
+- Keyboard navigation
+- Visible focus states
+- Reduced-motion support
+- Responsive layouts
+
+---
+
+## 🛠️ Tech Stack
+
+### Backend
+
+- **Python 3**
+- **Django 6**
+- Django Cache Framework
+- WhiteNoise
+- Gunicorn
+
+### Frontend
+
+- HTML5
+- CSS3
+- Vanilla JavaScript
+- SVG
+- Glassmorphism UI
+- Leaflet
+
+### APIs & Services
+
+| Service | Purpose |
+|---|---|
+| Open-Meteo | Weather forecast |
+| Open-Meteo Geocoding | Worldwide city search |
+| Open-Meteo Air Quality | AQI and pollutants |
+| BigDataCloud | Reverse geocoding |
+| RainViewer | Precipitation radar |
+
+### Database
+
+- SQLite — Development
+- PostgreSQL — Production
+
+---
+
+## 🏗️ Architecture
+
+```text
+                    ┌─────────────────────┐
+                    │      User / PWA     │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │   Django Frontend   │
+                    │ HTML / CSS / JS /   │
+                    │ SVG / Leaflet       │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │    Django Backend   │
+                    │ Views / Services /  │
+                    │ Cache / Utils       │
+                    └──────────┬──────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+              ▼                ▼                ▼
+       ┌────────────┐   ┌────────────┐   ┌────────────┐
+       │ Open-Meteo │   │BigDataCloud│   │ RainViewer │
+       │ Weather    │   │ Geocoding  │   │   Radar    │
+       └────────────┘   └────────────┘   └────────────┘
+````
+
+---
+
+## 📁 Project Structure
+
+```text
+AtmosWeather/
+│
+├── config/
+│   ├── settings.py
+│   ├── urls.py
+│   ├── wsgi.py
+│   └── asgi.py
+│
+├── weather/
+│   ├── views.py
+│   ├── urls.py
+│   ├── models.py
+│   ├── services/
+│   └── utils/
+│
+├── templates/
+│   └── weather/
+│       └── index.html
+│
+├── static/
+│   ├── css/
+│   │   └── style.css
+│   │
+│   ├── js/
+│   │   ├── app.js
+│   │   ├── weather.js
+│   │   ├── animations.js
+│   │   └── secrets.js
+│   │
+│   ├── icons/
+│   ├── manifest.json
+│   └── sw.js
+│
+├── manage.py
+├── requirements.txt
+├── .env.example
+├── .gitignore
+└── README.md
 ```
 
-Open http://127.0.0.1:8000.
+---
 
-## Production
+# 🚀 Installation
 
-Run the app on any Python host (Railway, Render, PythonAnywhere, a VPS, etc.) with Gunicorn and
-WhiteNoise:
+## 1. Clone the Repository
+
+```bash
+git clone https://github.com/AamirShaikh5176/atmosweather.git
+```
+
+```bash
+cd atmosweather
+```
+
+---
+
+## 2. Create a Virtual Environment
+
+### Windows
+
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+### macOS / Linux
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+---
+
+## 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
+```
+
+---
+
+## 4. Configure Environment Variables
+
+Create a `.env` file:
+
+```env
+DJANGO_SECRET_KEY=your-secret-key
+DJANGO_DEBUG=True
+DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost
+WEATHER_CACHE_TTL=600
+```
+
+For production:
+
+```env
+DJANGO_DEBUG=False
+```
+
+Never commit `.env` to GitHub.
+
+---
+
+## 5. Run Database Migrations
+
+```bash
 python manage.py migrate
+```
+
+---
+
+## 6. Start the Development Server
+
+```bash
+python manage.py runserver
+```
+
+Open:
+
+```text
+http://127.0.0.1:8000/
+```
+
+---
+
+# 🔌 API Configuration
+
+AtmosWeather uses primarily free/public APIs.
+
+### Open-Meteo
+
+Used for:
+
+* Current weather
+* Weather forecasts
+* Worldwide geocoding
+* Air quality
+
+No API key is required.
+
+### BigDataCloud
+
+Used for:
+
+* Reverse geocoding
+* Converting coordinates into readable location information
+
+### RainViewer
+
+Used for:
+
+* Live precipitation radar
+* Radar map overlays
+
+### Map Provider
+
+The weather map uses the configured map tile provider together with the
+RainViewer radar overlay.
+
+Any client-side map key should be restricted to the deployed domain.
+
+---
+
+# 🔐 Security
+
+Sensitive configuration should never be committed to GitHub.
+
+The following files should remain ignored:
+
+```text
+.env
+db.sqlite3
+static/js/secrets.js
+__pycache__/
+*.pyc
+venv/
+```
+
+Before pushing the project:
+
+```bash
+git status
+```
+
+Make sure no API keys, passwords or secret keys are being tracked.
+
+---
+
+# 🗄️ Database
+
+### Development
+
+SQLite is used for local development:
+
+```text
+db.sqlite3
+```
+
+### Production
+
+PostgreSQL is recommended for production deployments.
+
+Configure the production database using:
+
+```env
+DJANGO_DB_ENGINE=postgres
+DJANGO_DB_NAME=your_database
+DJANGO_DB_USER=your_user
+DJANGO_DB_PASSWORD=your_password
+DJANGO_DB_HOST=your_host
+DJANGO_DB_PORT=5432
+```
+
+---
+
+# ☁️ Deployment
+
+AtmosWeather can be deployed on:
+
+* **Render**
+* **Railway**
+* **PythonAnywhere**
+* VPS / cloud servers
+* Other Python/Django-compatible hosting platforms
+
+### Production Commands
+
+```bash
+pip install -r requirements.txt
+```
+
+```bash
+python manage.py migrate
+```
+
+```bash
 python manage.py collectstatic --noinput
+```
+
+```bash
 gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
 ```
 
-Keep `DJANGO_DEBUG=False` and set a strong `DJANGO_SECRET_KEY` outside development.
+For production:
 
-## Project Structure
-
-```
-├── manage.py
-├── requirements.txt
-├── .env / .env.example
-├── config/            # settings, urls, wsgi, asgi
-├── weather/           # views, urls, services (all API logic), utils, models
-├── templates/weather/ # index.html
-└── static/
-    ├── css/style.css
-    ├── js/  app.js · weather.js · animations.js · secrets.js (local only, git-ignored)
-    ├── icons/  favicon + PWA icons
-    ├── manifest.json
-    └── sw.js
+```env
+DJANGO_DEBUG=False
 ```
 
-## Data Integrity
+Use PostgreSQL instead of SQLite for the production database.
 
-The app never fabricates weather data. Alerts always come from the provider (Open-Meteo currently
-offers no alert feed, so the UI shows the "no active alerts" state). Air quality and radar are
-hidden/degraded gracefully when unavailable. Summaries are rule-based and only state what the API
-data supports.
+---
+
+# ⚡ Performance
+
+AtmosWeather includes:
+
+* Weather response caching
+* Debounced city search
+* Skeleton loading states
+* Efficient API requests
+* Conditional data rendering
+* Responsive layouts
+* Service-worker support
+* Reduced-motion support
+* Smooth weather and UI animations
+
+---
+
+# 📱 Responsive Design
+
+AtmosWeather is designed for multiple screen sizes.
+
+### Desktop
+
+```text
+┌──────────────────────────────────────────┐
+│ Sidebar │       Weather Dashboard       │
+│         │                               │
+│ Home    │ Current Weather               │
+│ Fav.    │ Forecast                      │
+│ Settings│ Air Quality / Radar           │
+└──────────────────────────────────────────┘
+```
+
+### Mobile
+
+```text
+┌──────────────────────┐
+│   AtmosWeather       │
+│                      │
+│   Current Weather    │
+│                      │
+│   Forecast           │
+│                      │
+│   Weather Details    │
+│                      │
+├──────────────────────┤
+│ Home Locations ★ ⚙  │
+└──────────────────────┘
+```
+
+---
+
+# 📊 Data Integrity
+
+AtmosWeather does not fabricate weather information.
+
+Weather values, forecasts, air-quality measurements and radar information are
+obtained from the configured providers.
+
+When information is unavailable, the application gracefully displays loading,
+empty or unavailable states instead of fabricating values.
+
+---
+
+# 🎯 Future Improvements
+
+Potential future enhancements include:
+
+* 🔔 Weather notifications
+* ⚠️ Severe weather alerts
+* 🗺️ Additional radar layers
+* 📱 Home-screen weather widgets
+* 🌡️ Historical weather information
+* 🔄 Weather comparison between cities
+* 🤖 Personalized weather recommendations
+* 📡 Expanded offline capabilities
+* 🌍 More advanced weather-map layers
+
+---
+
+# 👨‍💻 Author
+
+## Aamir Shaikh
+
+**B.Tech Information Technology**
+Bharati Vidyapeeth (Deemed to be University) College of Engineering, Pune
+
+### Connect With Me
+
+* LinkedIn: [https://www.linkedin.com/in/aamirshaikh5176/](https://www.linkedin.com/in/aamirshaikh5176/)
+* GitHub: [https://github.com/AamirShaikh5176](https://github.com/AamirShaikh5176)
+
+---
+
+# ⭐ Support
+
+If you find **AtmosWeather** useful, consider giving the repository a ⭐ on
+GitHub.
+
+---
+
+## 📄 License
+
+This project is developed for educational, portfolio and demonstration
+purposes.
+
+---

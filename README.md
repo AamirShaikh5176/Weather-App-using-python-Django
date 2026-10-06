@@ -18,7 +18,8 @@ themes, and PWA support.
 - **Sun & Moon card**: animated sun path showing the sun's real-time position, daylight duration,
   moon phase and illumination
 - **Air quality** (US AQI, PM2.5, PM10, O₃, NO₂, SO₂, CO) — hidden automatically when unavailable
-- **Live precipitation radar map** (RainViewer tiles over OpenStreetMap, no key needed)
+- **Live precipitation radar map** — RainViewer radar overlay on a MapTiler basemap (optional key,
+  git-ignored), with automatic fallback to Esri's keyless ArcGIS tiles
 - **Global city search** with debounced autocomplete showing state/country to disambiguate
 - **Use My Location** via browser geolocation + reverse geocoding
 - **Favorites** (add / remove / reorder) and **recent searches**, persisted in localStorage
@@ -38,12 +39,29 @@ themes, and PWA support.
 | Backend   | Python 3, Django 6, Django cache framework, WhiteNoise      |
 | APIs      | Open-Meteo (forecast/geocoding/air quality), BigDataCloud (reverse geocoding), RainViewer (radar) |
 | Frontend  | HTML5, CSS3 (glassmorphism), vanilla JS, SVG animations, Leaflet |
+| Map tiles | MapTiler (dark/light dataviz, optional key) · Esri ArcGIS fallback · RainViewer radar |
 | Data      | SQLite (dev) — PostgreSQL-ready via `DJANGO_DB_*` env vars  |
 
 ## API Setup
 
-No keys are required for the default providers (Open-Meteo, RainViewer, BigDataCloud's free
-client endpoint). If you switch to a keyed provider, put the key in `.env` as `WEATHER_API_KEY=…`
+The core providers need no keys: Open-Meteo (weather, geocoding, air quality), BigDataCloud's free
+reverse-geocoding endpoint, and RainViewer (radar overlay).
+
+**Optional: MapTiler basemap key.** The weather map's base layer uses MapTiler's dataviz styles
+(dark and light) when a key is provided, and falls back to Esri's keyless ArcGIS tiles otherwise.
+(OSM's own tile server 403-blocks browser apps, so it is not used directly.)
+
+1. Get a free key at [cloud.maptiler.com](https://cloud.maptiler.com) (100k tile loads/month free).
+2. Create `static/js/secrets.js` (git-ignored, never committed):
+
+   ```js
+   window.MAPTILER_KEY = "your-key-here";
+   ```
+
+3. For production, restrict the key to your domain in the MapTiler console — client-side tile keys
+   are visible to anyone viewing the page source.
+
+If you switch to a keyed weather provider instead, put the key in `.env` as `WEATHER_API_KEY=…`
 and never hardcode it in source.
 
 ## Environment Variables
@@ -59,6 +77,9 @@ Copy `.env.example` to `.env` and adjust:
 | `DJANGO_DB_ENGINE`       | *(empty)* | Set to `postgres` for PostgreSQL       |
 | `DJANGO_DB_*`            | —       | `NAME`, `USER`, `PASSWORD`, `HOST`, `PORT` |
 | `WEATHER_CACHE_TTL`      | `600`   | Weather cache lifetime (seconds)         |
+
+Note: the MapTiler tile key is *not* an environment variable — it is injected client-side via the
+git-ignored `static/js/secrets.js` (see API Setup above).
 
 ## Local Development
 
@@ -104,7 +125,7 @@ files through WhiteNoise with compression, and keeps `DEBUG=False`.
 ├── templates/weather/ # index.html
 └── static/
     ├── css/style.css
-    ├── js/  app.js · weather.js · animations.js
+    ├── js/  app.js · weather.js · animations.js · secrets.js (local only, git-ignored)
     ├── icons/  favicon + PWA icons
     ├── manifest.json
     └── sw.js

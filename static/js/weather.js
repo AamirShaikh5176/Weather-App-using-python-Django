@@ -670,12 +670,13 @@
   var radarFrames = [], radarLayers = [], radarCurrent = 0;
   var radarMeta = null;
 
-  // Esri ArcGIS Online basemaps — free, no API key required. (OSM's tile
-  // server 403-blocks browser apps and CARTO's tiles now demand an API key.)
-  // Note Esri tile path is /{z}/{y}/{x}, not /{z}/{x}/{y}.
-  var ESRI_LIGHT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
-  var ESRI_DARK_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}";
-  var ESRI_ATTRIB = 'Tiles © <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a> — Esri, DeLorme, NAVTEQ';
+  // MapTiler basemaps (OSM data) — user's key. "dataviz" styles are designed
+  // for data overlays like our RainViewer radar. Key is public client-side;
+  // restrict it to your domain in the MapTiler console.
+  var MAPTILER_KEY = "OaafDWzDynHqK6HU5y3z";
+  var MAPTILER_LIGHT_URL = "https://api.maptiler.com/maps/dataviz/{z}/{x}/{y}.png?key=" + MAPTILER_KEY;
+  var MAPTILER_DARK_URL = "https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=" + MAPTILER_KEY;
+  var MAPTILER_ATTRIB = '<a href="https://www.maptiler.com/copyright/" target="_blank" rel="noopener">© MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>';
   var RADAR_META_URL = "https://api.rainviewer.com/public/weather-maps.json";
   var RADAR_MAX_ZOOM = 7;   // RainViewer tile limit
   var RADAR_OPACITY = 0.65;
@@ -743,12 +744,12 @@
       maxZoom: RADAR_MAX_ZOOM,
       worldCopyJump: true
     });
-    // Esri basemap tiles — no API key needed; light/dark follows the theme.
+    // MapTiler basemap tiles — light/dark dataviz style follows the theme.
     var isLight = window.App && typeof window.App.isLightTheme === "function"
       ? window.App.isLightTheme() : false;
-    window.L.tileLayer(isLight ? ESRI_LIGHT_URL : ESRI_DARK_URL, {
+    window.L.tileLayer(isLight ? MAPTILER_LIGHT_URL : MAPTILER_DARK_URL, {
       maxZoom: RADAR_MAX_ZOOM,
-      attribution: ESRI_ATTRIB
+      attribution: MAPTILER_ATTRIB
     }).addTo(mapObj);
 
     var lat = d.place.lat, lon = d.place.lon;

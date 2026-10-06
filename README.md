@@ -91,26 +91,19 @@ python manage.py runserver 0.0.0.0:8000
 
 Open http://127.0.0.1:8000.
 
-## Replit
+## Production
 
-The project is Replit-ready via `.replit`:
-
-1. Import/upload the project into a Replit Python repl.
-2. Press **Run** — it executes `python manage.py runserver 0.0.0.0:8000`.
-3. The webview opens the app automatically (port 8000 is mapped externally).
-
-For Replit deployments, the `[deploy]` block runs migrations, collects static files, and starts
-Gunicorn bound to `$PORT`.
-
-## Docker / Production
+Run the app on any Python host (Railway, Render, PythonAnywhere, a VPS, etc.) with Gunicorn and
+WhiteNoise:
 
 ```bash
-docker build -t atmosweather .
-docker run -p 8080:8080 -e DJANGO_SECRET_KEY=<strong-secret> atmosweather
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py collectstatic --noinput
+gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
 ```
 
-The container listens on the injected `PORT` (default 8080), applies migrations, serves static
-files through WhiteNoise with compression, and keeps `DEBUG=False`.
+Keep `DJANGO_DEBUG=False` and set a strong `DJANGO_SECRET_KEY` outside development.
 
 ## Project Structure
 
@@ -118,8 +111,6 @@ files through WhiteNoise with compression, and keeps `DEBUG=False`.
 ├── manage.py
 ├── requirements.txt
 ├── .env / .env.example
-├── .replit
-├── Dockerfile
 ├── config/            # settings, urls, wsgi, asgi
 ├── weather/           # views, urls, services (all API logic), utils, models
 ├── templates/weather/ # index.html

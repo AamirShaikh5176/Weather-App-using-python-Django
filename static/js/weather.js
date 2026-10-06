@@ -670,11 +670,12 @@
   var radarFrames = [], radarLayers = [], radarCurrent = 0;
   var radarMeta = null;
 
-  // CARTO basemaps (free for apps, built on OSM data). OSM's own tile server
-  // returns 403 "Access blocked" for browser apps, so we use CARTO instead.
-  var CARTO_LIGHT_URL = "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
-  var CARTO_DARK_URL = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-  var CARTO_ATTRIB = '<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a> © <a href="https://carto.com/attributions" target="_blank" rel="noopener">CARTO</a>';
+  // Esri ArcGIS Online basemaps — free, no API key required. (OSM's tile
+  // server 403-blocks browser apps and CARTO's tiles now demand an API key.)
+  // Note Esri tile path is /{z}/{y}/{x}, not /{z}/{x}/{y}.
+  var ESRI_LIGHT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
+  var ESRI_DARK_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}";
+  var ESRI_ATTRIB = 'Tiles © <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a> — Esri, DeLorme, NAVTEQ';
   var RADAR_META_URL = "https://api.rainviewer.com/public/weather-maps.json";
   var RADAR_MAX_ZOOM = 7;   // RainViewer tile limit
   var RADAR_OPACITY = 0.65;
@@ -742,14 +743,12 @@
       maxZoom: RADAR_MAX_ZOOM,
       worldCopyJump: true
     });
-    // CARTO tiles (OSM data) — OSM's own server 403-blocks browser apps.
-    // Light/dark variant follows the current theme.
+    // Esri basemap tiles — no API key needed; light/dark follows the theme.
     var isLight = window.App && typeof window.App.isLightTheme === "function"
       ? window.App.isLightTheme() : false;
-    window.L.tileLayer(isLight ? CARTO_LIGHT_URL : CARTO_DARK_URL, {
+    window.L.tileLayer(isLight ? ESRI_LIGHT_URL : ESRI_DARK_URL, {
       maxZoom: RADAR_MAX_ZOOM,
-      subdomains: "abcd",
-      attribution: CARTO_ATTRIB
+      attribution: ESRI_ATTRIB
     }).addTo(mapObj);
 
     var lat = d.place.lat, lon = d.place.lon;

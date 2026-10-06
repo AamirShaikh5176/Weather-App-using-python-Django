@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+db.sqlite3
+
+# Environment
+.env
+
+# Django
+staticfiles/
+media/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Replit
+.replit_user_config
+upm/

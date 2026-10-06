@@ -8,6 +8,7 @@ venv/
 
 # Environment
 .env
+static/js/secrets.js
 
 # Django
 staticfiles/

@@ -670,13 +670,17 @@
   var radarFrames = [], radarLayers = [], radarCurrent = 0;
   var radarMeta = null;
 
-  // MapTiler basemaps (OSM data) — user's key. "dataviz" styles are designed
-  // for data overlays like our RainViewer radar. Key is public client-side;
-  // restrict it to your domain in the MapTiler console.
-  var MAPTILER_KEY = "OaafDWzDynHqK6HU5y3z";
+  // Basemap: MapTiler (OSM data) when a key is provided via the local,
+  // git-ignored static/js/secrets.js; otherwise falls back to Esri's
+  // keyless ArcGIS tiles. (OSM's own tile server 403-blocks browser apps
+  // and CARTO's tiles now demand an API key.)
+  var MAPTILER_KEY = (typeof window.MAPTILER_KEY === "string" && window.MAPTILER_KEY) || "";
   var MAPTILER_LIGHT_URL = "https://api.maptiler.com/maps/dataviz/{z}/{x}/{y}.png?key=" + MAPTILER_KEY;
   var MAPTILER_DARK_URL = "https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=" + MAPTILER_KEY;
   var MAPTILER_ATTRIB = '<a href="https://www.maptiler.com/copyright/" target="_blank" rel="noopener">© MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a>';
+  var ESRI_LIGHT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}";
+  var ESRI_DARK_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}";
+  var ESRI_ATTRIB = 'Tiles © <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a> — Esri, DeLorme, NAVTEQ';
   var RADAR_META_URL = "https://api.rainviewer.com/public/weather-maps.json";
   var RADAR_MAX_ZOOM = 7;   // RainViewer tile limit
   var RADAR_OPACITY = 0.65;
@@ -744,13 +748,20 @@
       maxZoom: RADAR_MAX_ZOOM,
       worldCopyJump: true
     });
-    // MapTiler basemap tiles — light/dark dataviz style follows the theme.
+    // Basemap tiles — MapTiler if a key is set (secrets.js), else Esri
+    // keyless tiles; light/dark variant follows the theme.
     var isLight = window.App && typeof window.App.isLightTheme === "function"
       ? window.App.isLightTheme() : false;
-    window.L.tileLayer(isLight ? MAPTILER_LIGHT_URL : MAPTILER_DARK_URL, {
-      maxZoom: RADAR_MAX_ZOOM,
-      attribution: MAPTILER_ATTRIB
-    }).addTo(mapObj);
+    var useMapTiler = MAPTILER_KEY !== "";
+    window.L.tileLayer(
+      useMapTiler
+        ? (isLight ? MAPTILER_LIGHT_URL : MAPTILER_DARK_URL)
+        : (isLight ? ESRI_LIGHT_URL : ESRI_DARK_URL),
+      {
+        maxZoom: RADAR_MAX_ZOOM,
+        attribution: useMapTiler ? MAPTILER_ATTRIB : ESRI_ATTRIB
+      }
+    ).addTo(mapObj);
 
     var lat = d.place.lat, lon = d.place.lon;
     mapObj.on("click", function () {

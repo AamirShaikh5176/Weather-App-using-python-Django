@@ -1,3 +1,16 @@
+<p align="center">
+  <img width="32%" src="https://github.com/user-attachments/assets/058a8126-ec16-4a29-954c-98a184c1fe75" alt="Weather Dashboard"/>
+  <img width="32%" src="https://github.com/user-attachments/assets/dad980d7-37e6-4c63-afaf-2cc575bb3ac5" alt="Hourly Forecast"/>
+  <img width="32%" src="https://github.com/user-attachments/assets/a01a2331-2be7-4acd-b548-6449289d4d82" alt="Five-Day Forecast and Air Quality"/>
+</p>
+
+<p align="center">
+  <img width="24%" src="https://github.com/user-attachments/assets/ce0f0d16-5f25-41d8-87cd-6c4d0d7cc474" alt="Weather Details and Map"/>
+  <img width="24%" src="https://github.com/user-attachments/assets/b613b243-82ff-418a-8ad4-2d064b52f463" alt="Weather Settings"/>
+  <img width="24%" src="https://github.com/user-attachments/assets/012a4064-aad6-4ce3-ac6f-1d7382e0f471" alt="City Search"/>
+  <img width="24%" src="https://github.com/user-attachments/assets/a5561c8e-5de1-4bc2-ac2e-2cccd4e25a38" alt="Selected Location"/>
+</p>
+
 # 🌤️ AtmosWeather
 
 ---
